@@ -104,6 +104,10 @@ def load_css():
         color: white;
         border-color: var(--primary-color);
     }
+
+    .stats-card{
+        color: var(--text-dark);
+    }
     
     /* Chat container */
     .chat-container {
@@ -202,19 +206,13 @@ def load_css():
     
     .message-time {
         font-size: 0.75rem;
-        color: #666;
+        color: black;
         margin-top: 0.25rem;
         opacity: 0.7;
     }
     
     /* Input area */
-    .input-container {
-        background: white;
-        border-radius: 15px;
-        border: 2px solid #e1e5e9;
-        padding: 1rem;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
-    }
+    
     
     .input-container:focus-within {
         border-color: var(--primary-color);
@@ -366,23 +364,6 @@ def render_sidebar():
             key="difficulty"
         )
         
-        st.markdown("---")
-        
-        # Session statistics
-        st.markdown("### 📈 Session Stats")
-        
-        st.markdown(f"""
-        <div class="stats-card">
-            <strong>Questions Asked:</strong> {st.session_state.questions_count}
-        </div>
-        """, unsafe_allow_html=True)
-        
-        st.markdown(f"""
-        <div class="stats-card">
-            <strong>Subjects Used:</strong> {len(st.session_state.subjects_used)}
-        </div>
-        """, unsafe_allow_html=True)
-        
         if st.session_state.selected_subject:
             st.markdown(f"""
             <div class="stats-card">
@@ -490,17 +471,7 @@ def render_chat_interface():
         return
     
     # Chat container
-    with st.container():
-        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
-        
-        # Display chat messages
-        if not st.session_state.messages:
-            st.markdown(f"""
-            <div class="welcome-message">
-                <h3>🎯 Ready to help with {st.session_state.selected_subject}!</h3>
-                <p>Ask me any question about {st.session_state.selected_subject} and I'll provide detailed explanations.</p>
-            </div>
-            """, unsafe_allow_html=True)
+    with st.container():        
         
         for message in st.session_state.messages:
             render_message(message["content"], message["role"] == "user")
@@ -508,26 +479,13 @@ def render_chat_interface():
         st.markdown('</div>', unsafe_allow_html=True)
     
     # Input area
-    with st.container():
-        st.markdown('<div class="input-container">', unsafe_allow_html=True)
-        
-        col1, col2 = st.columns([4, 1])
-        
-        with col1:
-            user_input = st.text_input(
-                "",
-                placeholder=f"Ask me anything about {st.session_state.selected_subject}...",
-                key="user_input",
-                label_visibility="hidden"
-            )
-        
-        with col2:
-            send_button = st.button("Send 📤", key="send_button", use_container_width=True)
+    with st.container():        
+        user_input = st.chat_input("Type your question here...",)
         
         st.markdown('</div>', unsafe_allow_html=True)
     
     # Handle user input
-    if (send_button or user_input) and user_input.strip():
+    if (user_input) and user_input.strip():
         # Add user message
         st.session_state.messages.append({"role": "user", "content": user_input})
         st.session_state.questions_count += 1
