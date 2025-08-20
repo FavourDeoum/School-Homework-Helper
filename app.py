@@ -1,7 +1,7 @@
 import streamlit as st
 import time
 from datetime import datetime
-import base64
+import uuid
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -11,7 +11,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for professional styling
+# Custom CSS for ChatGPT-style interface
 def load_css():
     st.markdown("""
     <style>
@@ -23,6 +23,9 @@ def load_css():
         --success-color: #2ecc71;
         --background-light: #f8f9fa;
         --text-dark: #2c3e50;
+        --chat-user-bg: #007bff;
+        --chat-bot-bg: #f1f3f4;
+        --sidebar-bg: #ffffff;
     }
     
     /* Hide Streamlit branding */
@@ -30,63 +33,191 @@ def load_css():
     footer {visibility: hidden;}
     header {visibility: hidden;}
     
+    /* Main container */
+    .main .block-container {
+        padding-top: 2rem;
+        max-width: none;
+    }
+    
     /* Custom header */
     .main-header {
         background: linear-gradient(135deg, #1e3d59 0%, #f5c842 100%);
-        padding: 2rem 1rem;
-        border-radius: 10px;
+        padding: 1.5rem 2rem;
+        border-radius: 15px;
         margin-bottom: 2rem;
         text-align: center;
         color: white;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
     }
     
     .main-header h1 {
         margin: 0;
-        font-size: 2.5rem;
+        font-size: 2.2rem;
         font-weight: 700;
         text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
     }
     
     .main-header p {
         margin: 0.5rem 0 0 0;
-        font-size: 1.2rem;
+        font-size: 1.1rem;
         opacity: 0.9;
     }
     
-    /* Subject cards */
-    .subject-card {
-        background: white;
-        padding: 1.5rem;
-        border-radius: 12px;
-        border-left: 5px solid var(--primary-color);
-        margin: 1rem 0;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    /* Sidebar styling */
+    .css-1d391kg {
+        background-color: var(--sidebar-bg);
+        padding: 1rem;
     }
     
-    .subject-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 5px 20px rgba(0,0,0,0.15);
-    }
-    
-    /* Question input area */
-    .question-container {
-        background: #f8f9fa;
-        padding: 1.5rem;
+    .sidebar-header {
+        background: linear-gradient(135deg, #1e3d59 0%, #f5c842 100%);
+        color: white;
+        padding: 1rem;
         border-radius: 10px;
-        border: 2px dashed #dee2e6;
-        margin: 1rem 0;
+        text-align: center;
+        margin-bottom: 1.5rem;
     }
     
-    /* Response area */
-    .response-container {
+    /* Subject buttons in sidebar */
+    .subject-button {
+        width: 100%;
+        margin-bottom: 0.5rem;
+        padding: 0.75rem 1rem;
+        border: 2px solid transparent;
+        border-radius: 8px;
         background: white;
-        padding: 2rem;
-        border-radius: 12px;
-        border-left: 5px solid var(--success-color);
-        margin: 1rem 0;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        color: var(--text-dark);
+        font-weight: 500;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .subject-button:hover {
+        border-color: var(--primary-color);
+        background: var(--background-light);
+        transform: translateY(-1px);
+    }
+    
+    .subject-button.active {
+        background: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    
+    /* Chat container */
+    .chat-container {
+        height: 60vh;
+        overflow-y: auto;
+        padding: 1rem;
+        background: white;
+        border-radius: 15px;
+        border: 1px solid #e1e5e9;
+        margin-bottom: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    }
+    
+    .chat-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .chat-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 3px;
+    }
+    
+    .chat-container::-webkit-scrollbar-thumb {
+        background: #c1c1c1;
+        border-radius: 3px;
+    }
+    
+    .chat-container::-webkit-scrollbar-thumb:hover {
+        background: #a8a8a8;
+    }
+    
+    /* Chat messages */
+    .chat-message {
+        display: flex;
+        margin-bottom: 1rem;
+        animation: fadeIn 0.3s ease-in;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .chat-message.user {
+        justify-content: flex-end;
+    }
+    
+    .chat-message.bot {
+        justify-content: flex-start;
+    }
+    
+    .message-content {
+        max-width: 70%;
+        padding: 1rem 1.25rem;
+        border-radius: 18px;
+        position: relative;
+        word-wrap: break-word;
+    }
+    
+    .message-content.user {
+        background: var(--chat-user-bg);
+        color: white;
+        border-bottom-right-radius: 4px;
+        margin-left: 2rem;
+    }
+    
+    .message-content.bot {
+        background: var(--chat-bot-bg);
+        color: var(--text-dark);
+        border-bottom-left-radius: 4px;
+        margin-right: 2rem;
+        border: 1px solid #e1e5e9;
+    }
+    
+    .message-avatar {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: bold;
+        margin: 0 0.5rem;
+    }
+    
+    .message-avatar.user {
+        background: var(--chat-user-bg);
+        color: white;
+    }
+    
+    .message-avatar.bot {
+        background: var(--primary-color);
+        color: white;
+    }
+    
+    .message-time {
+        font-size: 0.75rem;
+        color: #666;
+        margin-top: 0.25rem;
+        opacity: 0.7;
+    }
+    
+    /* Input area */
+    .input-container {
+        background: white;
+        border-radius: 15px;
+        border: 2px solid #e1e5e9;
+        padding: 1rem;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
+    }
+    
+    .input-container:focus-within {
+        border-color: var(--primary-color);
     }
     
     /* Button styling */
@@ -100,6 +231,7 @@ def load_css():
         font-size: 1rem;
         transition: all 0.3s ease;
         box-shadow: 0 4px 15px rgba(30, 61, 89, 0.3);
+        width: 100%;
     }
     
     .stButton > button:hover {
@@ -107,337 +239,337 @@ def load_css():
         box-shadow: 0 6px 20px rgba(30, 61, 89, 0.4);
     }
     
-    /* Sidebar styling */
-    .css-1d391kg {
-        background-color: #f8f9fa;
+    .stButton > button:disabled {
+        background: #6c757d;
+        transform: none;
+        box-shadow: none;
     }
     
-    /* Success/Error messages */
-    .success-msg {
-        background: #d4edda;
-        color: #155724;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 5px solid #28a745;
-        margin: 1rem 0;
-    }
-    
-    .error-msg {
-        background: #f8d7da;
-        color: #721c24;
-        padding: 1rem;
-        border-radius: 8px;
-        border-left: 5px solid #dc3545;
-        margin: 1rem 0;
-    }
-    
-    /* Loading animation */
-    .loading-container {
+    /* Welcome message */
+    .welcome-message {
         text-align: center;
+        color: #6c757d;
+        font-style: italic;
+        margin: 2rem 0;
         padding: 2rem;
+        background: #f8f9fa;
+        border-radius: 15px;
+        border: 2px dashed #dee2e6;
     }
     
-    .loading-text {
+    .welcome-message h3 {
         color: var(--primary-color);
-        font-size: 1.1rem;
-        margin-top: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    /* Loading indicator */
+    .typing-indicator {
+        display: flex;
+        align-items: center;
+        color: #666;
+        font-style: italic;
+        margin-left: 50px;
+    }
+    
+    .typing-dots {
+        display: inline-flex;
+        margin-left: 0.5rem;
+    }
+    
+    .typing-dots span {
+        height: 8px;
+        width: 8px;
+        background: #666;
+        border-radius: 50%;
+        display: inline-block;
+        margin: 0 1px;
+        animation: typing 1.4s infinite ease-in-out;
+    }
+    
+    .typing-dots span:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dots span:nth-child(2) { animation-delay: -0.16s; }
+    
+    @keyframes typing {
+        0%, 80%, 100% { transform: scale(0.8); opacity: 0.5; }
+        40% { transform: scale(1); opacity: 1; }
+    }
+    
+    /* Stats cards */
+    .stats-card {
+        background: white;
+        padding: 1rem;
+        border-radius: 10px;
+        border-left: 4px solid var(--primary-color);
+        margin: 0.5rem 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     }
     
     /* Responsive design */
     @media (max-width: 768px) {
-        .main-header h1 {
-            font-size: 2rem;
-        }
-        .main-header p {
-            font-size: 1rem;
-        }
+        .main-header h1 { font-size: 1.8rem; }
+        .message-content { max-width: 85%; }
+        .chat-container { height: 50vh; }
     }
     </style>
     """, unsafe_allow_html=True)
 
-# Professional header component
-def render_header():
-    st.markdown("""
-    <div class="main-header">
-        <h1>📚 Cameroon GCE Homework Helper</h1>
-        <p>Your AI-powered tutor for Mathematics, English, French, Biology & History</p>
-    </div>
-    """, unsafe_allow_html=True)
-
-# Subject selection with icons and descriptions
-def render_subject_selector():
-    st.markdown("### 📖 Choose Your Subject")
-    
-    subjects = {
-        "Mathematics": {
-            "icon": "🧮",
-            "description": "Algebra, Geometry, Calculus, Statistics",
-            "color": "#e74c3c"
-        },
-        "English": {
-            "icon": "📝",
-            "description": "Grammar, Literature, Essay Writing, Comprehension",
-        },
-        "French": {
-            "icon": "🇫🇷",
-            "description": "Grammar, Vocabulary, Conversation, Literature",
-            "color": "#9b59b6"
-        },
-        "Biology": {
-            "icon": "🧬",
-            "description": "Cell Biology, Genetics, Ecology, Human Biology",
-            "color": "#2ecc71"
-        },
-        "History": {
-            "icon": "🏛️",
-            "description": "World History, Cameroon History, Ancient Civilizations",
-            "color": "#f39c12"
-        }
-    }
-    
-    # Create columns for subject cards
-    cols = st.columns(3)
-    selected_subject = None
-    
-    for i, (subject, info) in enumerate(subjects.items()):
-        with cols[i % 3]:
-            if st.button(f"{info['icon']} {subject}", key=f"subject_{subject}", use_container_width=True):
-                selected_subject = subject
-                st.session_state.selected_subject = subject
-    
-    # Display selected subject info
-    if 'selected_subject' in st.session_state:
-        subject_info = subjects[st.session_state.selected_subject]
-        st.markdown(f"""
-        <div class="subject-card">
-            <h3>{subject_info['icon']} {st.session_state.selected_subject}</h3>
-            <p><strong>Topics covered:</strong> {subject_info['description']}</p>
-        </div>
-        """, unsafe_allow_html=True)
-    
-    return st.session_state.get('selected_subject', None)
-
-# Professional question input area
-def render_question_input(subject):
-    st.markdown("### ❓ Ask Your Question")
-    
-    # Difficulty level selector
-    col1, col2 = st.columns([1, 1])
-    with col1:
-        difficulty = st.selectbox(
-            "📊 Select Difficulty Level",
-            ["GCE O-Level (Forms 1-5)", "GCE A-Level (Lower & Upper Sixth)"],
-            key="difficulty"
-        )
-    
-    with col2:
-        question_type = st.selectbox(
-            "📋 Question Type",
-            ["Homework Help", "Concept Explanation", "Practice Problems", "Exam Preparation"],
-            key="question_type"
-        )
-    
-    # Question input with placeholder
-    placeholders = {
-        "Mathematics": "Example: Solve for x in the equation 2x + 5 = 15, and explain each step...",
-        "English": "Example: Explain the main themes in 'Things Fall Apart' by Chinua Achebe...",
-        "French": "Example: Conjugate the verb 'avoir' in present tense and give examples...",
-        "Biology": "Example: Explain the process of photosynthesis and its importance...",
-        "History": "Example: Describe the major causes of World War I and its impact on Africa..."
-    }
-    
-    st.markdown("""
-    <div class="question-container">
-        <p><strong>💡 Tip:</strong> Be specific about what you need help with. The more details you provide, the better I can assist you!</p>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    question = st.text_area(
-        "Type your question here:",
-        placeholder=placeholders.get(subject, "Type your question here..."),
-        height=120,
-        key="question_input"
-    )
-    
-    # Additional context
-    with st.expander("🔧 Additional Context (Optional)"):
-        context = st.text_area(
-            "Provide any additional information, specific topics, or context:",
-            placeholder="Example: This is for my upcoming exam, focus on step-by-step solutions...",
-            height=80,
-            key="additional_context"
-        )
-    
-    return question, difficulty, question_type, st.session_state.get('additional_context', '')
-
-# Loading animation component
-def show_loading():
-    with st.container():
-        st.markdown("""
-        <div class="loading-container">
-            <div style="font-size: 3rem;">🤖</div>
-            <div class="loading-text">Processing your question...</div>
-        </div>
-        """, unsafe_allow_html=True)
-        
-        # Progress bar animation
-        progress_bar = st.progress(0)
-        for i in range(100):
-            time.sleep(0.02)
-            progress_bar.progress(i + 1)
-
-# Professional response display
-def render_response(response, subject):
-    st.markdown("### 💡 Your Answer")
-    
-    # Response container with subject-specific styling
-    st.markdown(f"""
-    <div class="response-container">
-        <h4>📚 {subject} Solution</h4>
-    </div>
-    """, unsafe_allow_html=True)
-    
-    # Display the response
-    st.markdown(response)
-    
-    # Action buttons
-    col1, col2, col3, col4 = st.columns(4)
-    with col1:
-        if st.button("👍 Helpful", key="helpful"):
-            st.success("Thank you for your feedback!")
-    
-    with col2:
-        if st.button("👎 Not Helpful", key="not_helpful"):
-            st.info("We'll improve our responses. Thank you!")
-    
-    with col3:
-        if st.button("🔄 Ask Follow-up", key="follow_up"):
-            st.session_state.show_follow_up = True
-    
-    with col4:
-        if st.button("📤 Share", key="share"):
-            st.info("Response copied to clipboard!")
-
-# Sidebar with additional features
-def render_sidebar():
-    with st.sidebar:
-        st.markdown("## 🎯 Quick Tools")
-        
-        # Study tips
-        with st.expander("📖 Study Tips"):
-            st.markdown("""
-            - Break down complex problems into smaller steps
-            - Practice regularly with different question types
-            - Ask for explanations, not just answers
-            - Review your mistakes to learn from them
-            """)
-        
-        # GCE Resources
-        with st.expander("📚 GCE Resources"):
-            st.markdown("""
-            - **Past Papers**: Practice with previous GCE questions
-            - **Syllabus Guide**: Check current curriculum requirements
-            - **Study Schedule**: Plan your revision effectively
-            """)
-        
-        # Contact/Help
-        with st.expander("❓ Need Help?"):
-            st.markdown("""
-            **Having issues?**
-            - Check your internet connection
-            - Refresh the page if needed
-            - Contact your teacher for additional support
-            """)
-        
-        # Session stats
-        st.markdown("---")
-        st.markdown("### 📊 Session Stats")
-        questions_asked = st.session_state.get('questions_count', 0)
-        st.metric("Questions Asked", questions_asked)
-        st.metric("Subjects Covered", len(set(st.session_state.get('subjects_used', []))))
-
-# Error handling component
-def show_error(error_message):
-    st.markdown(f"""
-    <div class="error-msg">
-        <strong>⚠️ Oops!</strong> {error_message}
-    </div>
-    """, unsafe_allow_html=True)
-
-# Success message component
-def show_success(success_message):
-    st.markdown(f"""
-    <div class="success-msg">
-        <strong>✅ Success!</strong> {success_message}
-    </div>
-    """, unsafe_allow_html=True)
-
-# Main application flow
-def main():
-    # Initialize session state
+# Initialize session state
+def initialize_session_state():
+    if 'messages' not in st.session_state:
+        st.session_state.messages = []
+    if 'selected_subject' not in st.session_state:
+        st.session_state.selected_subject = None
     if 'questions_count' not in st.session_state:
         st.session_state.questions_count = 0
     if 'subjects_used' not in st.session_state:
-        st.session_state.subjects_used = []
+        st.session_state.subjects_used = set()
+    if 'chat_session_id' not in st.session_state:
+        st.session_state.chat_session_id = str(uuid.uuid4())
+
+# Sidebar with subject selection
+def render_sidebar():
+    with st.sidebar:
+        st.markdown("""
+        <div class="sidebar-header">
+            <h2>📚 Subjects</h2>
+            <p>Choose your subject area</p>
+        </div>
+        """, unsafe_allow_html=True)
+        
+        subjects = {
+            "Mathematics": {"icon": "🧮", "description": "Algebra, Geometry, Calculus"},
+            "English": {"icon": "📝", "description": "Grammar, Literature, Essays"},
+            "French": {"icon": "🇫🇷", "description": "Grammar, Vocabulary, Literature"},
+            "Biology": {"icon": "🧬", "description": "Cell Biology, Genetics, Ecology"},
+            "History": {"icon": "🏛️", "description": "World & Cameroon History"}
+        }
+        
+        # Subject selection buttons
+        for subject, info in subjects.items():
+            button_class = "active" if st.session_state.selected_subject == subject else ""
+            if st.button(
+                f"{info['icon']} {subject}",
+                key=f"subject_{subject}",
+                help=info['description'],
+                use_container_width=True
+            ):
+                st.session_state.selected_subject = subject
+                st.rerun()
+        
+        st.markdown("---")
+        
+        # Difficulty level selector
+        st.markdown("### 📊 Difficulty Level")
+        difficulty = st.selectbox(
+            "",
+            ["GCE O-Level (Forms 1-5)", "GCE A-Level (Lower & Upper Sixth)"],
+            key="difficulty"
+        )
+        
+        st.markdown("---")
+        
+        # Session statistics
+        st.markdown("### 📈 Session Stats")
+        
+        st.markdown(f"""
+        <div class="stats-card">
+            <strong>Questions Asked:</strong> {st.session_state.questions_count}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        st.markdown(f"""
+        <div class="stats-card">
+            <strong>Subjects Used:</strong> {len(st.session_state.subjects_used)}
+        </div>
+        """, unsafe_allow_html=True)
+        
+        if st.session_state.selected_subject:
+            st.markdown(f"""
+            <div class="stats-card">
+                <strong>Current Subject:</strong><br>
+                {subjects[st.session_state.selected_subject]['icon']} {st.session_state.selected_subject}
+            </div>
+            """, unsafe_allow_html=True)
+        
+        st.markdown("---")
+        
+        # Clear chat button
+        if st.button("🗑️ Clear Chat", use_container_width=True):
+            st.session_state.messages = []
+            st.session_state.questions_count = 0
+            st.session_state.subjects_used = set()
+            st.rerun()
+        
+        # Study resources
+        with st.expander("📚 Study Resources"):
+            st.markdown("""
+            - **Past Papers**: GCE previous questions
+            - **Syllabus**: Current curriculum guide
+            - **Study Tips**: Effective learning strategies
+            - **Practice Tests**: Self-assessment tools
+            """)
+
+# Header component
+def render_header():
+    if st.session_state.selected_subject:
+        subjects = {
+            "Mathematics": "🧮", "English": "📝", "French": "🇫🇷", 
+            "Biology": "🧬", "History": "🏛️"
+        }
+        subject_icon = subjects.get(st.session_state.selected_subject, "📚")
+        st.markdown(f"""
+        <div class="main-header">
+            <h1>{subject_icon} {st.session_state.selected_subject} Homework Helper</h1>
+            <p>Ask me anything about {st.session_state.selected_subject} - I'm here to help!</p>
+        </div>
+        """, unsafe_allow_html=True)
+    else:
+        st.markdown("""
+        <div class="main-header">
+            <h1>📚 Cameroon GCE Homework Helper</h1>
+            <p>Your AI-powered tutor for all GCE subjects</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+# Chat message component
+def render_message(message, is_user=True):
+    message_class = "user" if is_user else "bot"
+    avatar = "👤" if is_user else "🤖"
+    
+    timestamp = datetime.now().strftime("%H:%M")
+    
+    st.markdown(f"""
+    <div class="chat-message {message_class}">
+        <div class="message-avatar {message_class}">{avatar}</div>
+        <div class="message-content {message_class}">
+            {message}
+            <div class="message-time">{timestamp}</div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Typing indicator
+def show_typing_indicator():
+    st.markdown("""
+    <div class="typing-indicator">
+        🤖 AI is thinking
+        <div class="typing-dots">
+            <span></span>
+            <span></span>
+            <span></span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Generate AI response (placeholder for Gemini API integration)
+def generate_response(question, subject, difficulty):
+    # Simulate processing time
+    time.sleep(2)
+    
+    # This is where you would integrate your Gemini API
+    sample_responses = {
+        "Mathematics": f"Great question! Let me solve this {difficulty} mathematics problem step by step:\n\n1. **Understanding**: {question[:50]}...\n2. **Method**: I'll use the appropriate mathematical approach\n3. **Solution**: [Detailed step-by-step solution]\n4. **Verification**: Let's check our answer\n\n**Key Points**: Remember these concepts for your GCE exam!",
+        "English": f"Excellent {difficulty} English question! Here's my analysis:\n\n**Literary Analysis**: {question[:50]}...\n\n**Key Themes**:\n- Theme 1: [Explanation]\n- Theme 2: [Explanation]\n\n**Writing Tips**: Use these techniques in your essays!",
+        "French": f"Bonne question! For this {difficulty} French topic:\n\n**Explication**: {question[:50]}...\n\n**Grammaire**: [Grammar rules]\n**Vocabulaire**: [Key vocabulary]\n**Exemples**: [Practice examples]\n\n**Conseil**: Practice these structures regularly!",
+        "Biology": f"Fascinating {difficulty} biology question! Let me explain:\n\n**Concept**: {question[:50]}...\n\n**Scientific Explanation**:\n- Process 1: [Details]\n- Process 2: [Details]\n\n**Real-world Application**: This is important because...",
+        "History": f"Great {difficulty} history question! Here's the historical context:\n\n**Background**: {question[:50]}...\n\n**Key Events**:\n- Event 1: [Explanation]\n- Event 2: [Explanation]\n\n**Significance**: This shaped our world by..."
+    }
+    
+    return sample_responses.get(subject, "I'd be happy to help with your question! Please provide more details so I can give you the best answer.")
+
+# Main chat interface
+def render_chat_interface():
+    if not st.session_state.selected_subject:
+        st.markdown("""
+        <div class="welcome-message">
+            <h3>👋 Welcome to GCE Homework Helper!</h3>
+            <p>Please select a subject from the sidebar to get started.</p>
+            <p>I'm here to help you with Mathematics, English, French, Biology, and History!</p>
+        </div>
+        """, unsafe_allow_html=True)
+        return
+    
+    # Chat container
+    with st.container():
+        st.markdown('<div class="chat-container">', unsafe_allow_html=True)
+        
+        # Display chat messages
+        if not st.session_state.messages:
+            st.markdown(f"""
+            <div class="welcome-message">
+                <h3>🎯 Ready to help with {st.session_state.selected_subject}!</h3>
+                <p>Ask me any question about {st.session_state.selected_subject} and I'll provide detailed explanations.</p>
+            </div>
+            """, unsafe_allow_html=True)
+        
+        for message in st.session_state.messages:
+            render_message(message["content"], message["role"] == "user")
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Input area
+    with st.container():
+        st.markdown('<div class="input-container">', unsafe_allow_html=True)
+        
+        col1, col2 = st.columns([4, 1])
+        
+        with col1:
+            user_input = st.text_input(
+                "",
+                placeholder=f"Ask me anything about {st.session_state.selected_subject}...",
+                key="user_input",
+                label_visibility="hidden"
+            )
+        
+        with col2:
+            send_button = st.button("Send 📤", key="send_button", use_container_width=True)
+        
+        st.markdown('</div>', unsafe_allow_html=True)
+    
+    # Handle user input
+    if (send_button or user_input) and user_input.strip():
+        # Add user message
+        st.session_state.messages.append({"role": "user", "content": user_input})
+        st.session_state.questions_count += 1
+        st.session_state.subjects_used.add(st.session_state.selected_subject)
+        
+        # Clear input
+        st.session_state.user_input = ""
+        
+        # Show typing indicator
+        with st.container():
+            show_typing_indicator()
+        
+        # Generate and add AI response
+        response = generate_response(
+            user_input, 
+            st.session_state.selected_subject,
+            st.session_state.get('difficulty', 'GCE O-Level')
+        )
+        
+        st.session_state.messages.append({"role": "assistant", "content": response})
+        
+        # Rerun to update the chat
+        st.rerun()
+
+# Main application
+def main():
+    # Initialize session state
+    initialize_session_state()
     
     # Load custom CSS
     load_css()
     
     # Render components
-    render_header()
     render_sidebar()
-    
-    # Main content area
-    selected_subject = render_subject_selector()
-    
-    if selected_subject:
-        question, difficulty, question_type, context = render_question_input(selected_subject)
-        
-        if question and st.button("🚀 Get Help", key="submit_question", use_container_width=True):
-            # Update session stats
-            st.session_state.questions_count += 1
-            if selected_subject not in st.session_state.subjects_used:
-                st.session_state.subjects_used.append(selected_subject)
-            
-            # Show loading animation
-            show_loading()
-            
-            # Here you would integrate with your Gemini API
-            # For demo purposes, showing a sample response
-            sample_response = f"""
-            **Subject**: {selected_subject}
-            **Level**: {difficulty}
-            **Type**: {question_type}
-            
-            ## Step-by-Step Solution:
-            
-            1. **Understanding the Question**: {question[:100]}...
-            
-            2. **Approach**: Based on the Cameroon GCE {difficulty} curriculum...
-            
-            3. **Solution**: [This is where your Gemini API response would appear]
-            
-            ## Key Points to Remember:
-            - This concept is important for your GCE exams
-            - Practice similar problems to reinforce learning
-            - Review related topics in your textbook
-            
-            ## Additional Practice:
-            Try solving similar problems and ask for help if needed!
-            """
-            
-            render_response(sample_response, selected_subject)
-            show_success("Your question has been processed successfully!")
-    
-    else:
-        st.info("👆 Please select a subject to get started!")
+    render_header()
+    render_chat_interface()
     
     # Footer
     st.markdown("---")
     st.markdown("""
     <div style="text-align: center; color: #6c757d; padding: 1rem;">
-        Made with ❤️ for Cameroon GCE Students | 
-        <strong>Study Smart, Achieve More!</strong>
+        🎓 <strong>Study Smart, Achieve More!</strong> | Made for Cameroon GCE Students
     </div>
     """, unsafe_allow_html=True)
 
