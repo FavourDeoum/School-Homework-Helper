@@ -14,7 +14,19 @@ def ask_gemini(prompt, question):
     Calls Gemini API with subject-specific prompt + question
     """
     try:
-        model = genai.GenerativeModel("gemini-pro")
+        custom_config = genai.GenerationConfig(
+            temperature=1.2,
+            max_output_tokens=6000,
+            top_p=0.8,
+            top_k=30,
+            stop_sequences=["END"]
+        )
+
+        model = genai.GenerativeModel(
+            model_name='gemini-2.5-flash',
+            generation_config=custom_config,
+            system_instruction=prompt
+        )
         response = model.generate_content(f"{prompt}\n\nQuestion: {question}")
         return response.text
     except Exception as e:
