@@ -3,6 +3,10 @@ import time
 from datetime import datetime
 import uuid
 from logic.french_logic import ask_french_question
+from logic.math_logic import ask_math_question
+from logic.english_logic import ask_english_question
+from logic.biology_logic import ask_biology_question
+from logic.history_logic import ask_history_question
 
 # Page configuration - MUST be the first Streamlit command
 st.set_page_config(
@@ -446,6 +450,16 @@ def show_typing_indicator():
 def generate_response(question, subject, difficulty):
     if subject == "French":
         return ask_french_question(question, difficulty)
+    elif subject == "Mathematics":
+        return ask_math_question(question, difficulty)
+    elif subject == "English":
+        return ask_english_question(question, difficulty)
+    elif subject == "Biology":
+        return ask_biology_question(question, difficulty)
+    elif subject == "History":
+        return ask_history_question(question, difficulty)
+    else:
+        return "I'd be happy to help with your question! Please provide more details so I can give you the best answer."
     
     # Simulate processing time
     time.sleep(2)
